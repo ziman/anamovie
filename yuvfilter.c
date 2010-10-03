@@ -89,13 +89,17 @@ int main(int argc, char * argv[])
 		fprintf(stdout, "%s", format[i]);
 	}
 
-	char * w = strchr(format[0], 'W');
+	char * w = strstr(format[0], " W");
 	if (!w) die("Could not determine image width.");
-	int width = atoi(w+1);
+	int width = atoi(w+2);
 
-	char * h = strchr(format[0], 'H');
+	char * h = strstr(format[0], " H");
 	if (!h) die("Could not determine image height.");
-	int height = atoi(h+1);
+	int height = atoi(h+2);
+
+	char * c = strstr(format[0], " C");
+	if (!c) die("Could not determine pixel format.");
+	if (strncmp(c+2, "420", 3)) die("Only yuv420p pixel format supported!");
 
 	int pixels = width * height;
 	int frameSize = pixels + pixels/2;
