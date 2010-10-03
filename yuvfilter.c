@@ -39,6 +39,8 @@ static inline uchar clamp(int v)
 static inline void processLeftRGB(int rgb[3])
 {
 	rgb[0] = (rgb[1] + rgb[2]) / 2;
+	rgb[1] = 0;
+	rgb[2] = 0;
 }
 
 static inline void processRightRGB(int rgb[3])
