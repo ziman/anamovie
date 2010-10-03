@@ -3,20 +3,13 @@
 infile="$1"
 outfile="$2"
 
-inter_c() {
-	ffmpeg -i - -vcodec mpeg4 -b 800k "$1"
-}
-
-inter_d() {
-	ffmpeg -i "$1" -f yuv4mpegpipe -
-}
-
-
 dims=$(ffmpeg -i "$1" -vstats 2>&1 | sed -rn 's/.*Stream.* ([0-9]+)x([0-9]+).*/\1:\2/p')
 w=${dims%:*}
 h=${dims#*:}
 w=$((w/2))
 x=0
+
+ffmpeg -i "$infile" -acodec copy audio.wav
 
 for chan in left right; do
 	mkfifo $chan.fifo
@@ -28,6 +21,6 @@ done
 
 rm "$outfile"
 ./yuvfilter left.fifo right.fifo \
-	| inter_c "$outfile"
+	| ffmpeg -i - -i audio.wav -acodec copy -vcodec mpeg4 -b 800k "$outfile"
 
-rm {left,right}.fifo
+rm {left,right}.fifo audio.wav
