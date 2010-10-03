@@ -21,6 +21,6 @@ done
 
 rm "$outfile"
 ./yuvfilter left.fifo right.fifo \
-	| ffmpeg -i - -i audio.wav -acodec copy -vcodec mpeg4 -b 800k "$outfile"
+	| ffmpeg -i - -i audio.wav -acodec copy -vcodec mpeg4 -b 1600k "$outfile"
 
 rm {left,right}.fifo audio.wav
