@@ -1,0 +1,6 @@
+*.yuv*
+*.mpg
+yuvfilter
+*~
+*.o
+*.kdev4
