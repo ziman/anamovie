@@ -33,9 +33,9 @@ static inline uchar clamp(int v)
 
 static inline void processRGB(int left[3], int right[3], int res[3])
 {
-	res[0] = (left[1] + left[2]) / 2;
-	res[1] = right[1];
-	res[2] = right[2];
+	res[0] = (right[1] + right[2]) / 2;
+	res[1] = left[1];
+	res[2] = left[2];
 }
 
 #define at_(p,q) [(2*line + (p))*width + 2*col + (q)]
