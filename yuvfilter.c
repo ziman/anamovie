@@ -38,12 +38,15 @@ static inline void processRGB(int left[3], int right[3], int res[3])
 	res[2] = right[2];
 }
 
-#define y_2(p,q) ((2*y+(p))*width + (2*x+(q)))
-#define y(i) y_2(i >> 1, i & 1)
+#define at_(p,q) [(2*line + (p))*width + 2*col + (q)]
+#define at(i) at_(i >> 1, i & 1)
 void mogrifyYUVFrames(uchar * left, uchar * right, uchar * res, int width, int height)
 {
 	int uOfs = width * height;
 	int vOfs = uOfs / 4;
+	
+	for (int i = 0; i < width*height; ++i)
+		res[i] = right[i];
 	
 	uchar * LU = left + uOfs;
 	uchar * LV = LU + vOfs;
@@ -52,11 +55,11 @@ void mogrifyYUVFrames(uchar * left, uchar * right, uchar * res, int width, int h
 	uchar * OU = res + uOfs;
 	uchar * OV = OU + vOfs;
 
-	height /= 2;
-	width /= 2;
+	int height2 = height/2;
+	int width2 = width/2;
 	
-	for (int y = 0; y < height; ++y)
-		for (int x = 0; x < width; ++x)
+	for (int line = 0; line < height2; ++line)
+		for (int col = 0; col < width2; ++col)
 		{
 			int lrgb[4][3];
 			int rrgb[4][3];
@@ -64,11 +67,11 @@ void mogrifyYUVFrames(uchar * left, uchar * right, uchar * res, int width, int h
 			int yuv[4][3];
 			for (int i = 0; i < 4; ++i)
 			{
-				yuv2rgb(lrgb[i], left[y(i)], *LU, *LV);
-				yuv2rgb(rrgb[i], right[y(i)], *RU, *RV);
+				yuv2rgb(lrgb[i], left at(i), *LU, *LV);
+				yuv2rgb(rrgb[i], right at(i), *RU, *RV);
 				processRGB(lrgb[i], rrgb[i], rgb[i]);
 				rgb2yuv(rgb[i], yuv[i]);
-				res[y(i)] = clamp(yuv[i][0]);
+				res at(i) = clamp(yuv[i][0]);
 			}
 		
 			*OU++ = clamp((yuv[0][1] + yuv[1][1] + yuv[2][1] + yuv[3][1]) / 4);
@@ -104,10 +107,8 @@ int getFrame(FILE * f, uchar * frame, int frameSize)
 	char separator[1024];
 	fgets(separator, sizeof(separator), f);
 	if (feof(f)) return 1;
-	fprintf(stdout, "%s", separator);
 
 	fread(frame, frameSize, 1, f);
-	
 	return 0;
 }
 
@@ -147,7 +148,8 @@ int main(int argc, char * argv[])
 		if (getFrame(right, fRight, frameSize)) break;
 		
 		mogrifyYUVFrames(fLeft, fRight, fResult, width, height);
-		
+
+		printf("FRAME\n");
 		fwrite(fResult, frameSize, 1, stdout);
 	}
 	
