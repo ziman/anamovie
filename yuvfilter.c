@@ -11,17 +11,29 @@ void die(const char * const msg)
 	exit(1);
 }
 
-inline void yuv2rgb(int rgb[3], uchar Y, uchar u, uchar v)
+inline void yuv2rgb(int rgb[3], int y, int u, int v)
 {
-	int Cr = u - 128L;
-	int Cb = v - 128L;
-	rgb[0] = Y + Cr + (Cr >> 2) + (Cr >> 3) + (Cr >> 5);
-	rgb[1] = Y - ((Cb >> 2) + (Cb >> 4) + (Cb >> 5)) - ((Cr >> 1) + (Cr >> 3) + (Cr >> 4) + (Cr >> 5));
-	rgb[2] = Y + Cb + (Cb >> 1) + (Cb >> 2) + (Cb >> 6);
+	rgb[0] = (9535 * (y - 16) + 13074 * (v - 128)) >> 13;
+	rgb[1] = (9535 * (y - 16) -  6660 * (v - 128) - 3203 * (u - 128)) >> 13;
+	rgb[2] = (9535 * (y - 16) + 16531 * (u - 128)) >> 13;
 }
 
-inline void rgb2yuv(int rgb[3], uchar * Y, uchar * u, uchar * v)
+inline int abs(int x)
 {
+	return (x < 0) ? -x : x;
+}
+
+inline void rgb2yuv(int rgb[3], int yuv[3])
+{
+	int r = rgb[0]; int g = rgb[1]; int b = rgb[2];
+	yuv[0] = abs(r * 2104 + g * 4130 + b * 802 + 4096 + 131072) >> 13;
+	yuv[1] = abs(r * (-1214) + g * (-2384) + b * 3598 + 4096 + 1048576) >> 13;
+	yuv[2] = abs(r * 3598 + g * -3013 + b * (-585) + 4096 + 1048576) >> 13;
+}
+
+inline uchar clamp(int v)
+{
+	return (v < 0) ? 0 : ((v > 255) ? 255 : (uchar) v);
 }
 
 void processRGB(int rgb[3])
@@ -35,24 +47,35 @@ void mogrifyYUVFrame(unsigned char * frame, int width, int height)
 	uchar * Y = frame;
 	uchar * U = Y + width * height;
 	uchar * V = U + (width * height) / 4;
+	int ustride = width/2;
 	
 	for (int y = 0; y < height/2; ++y)
 		for (int x = 0; x < width/2; ++x)
 		{
 			int rgb[4][3];
-			int uvOfs = width*y + x;
-			uchar u = U[uvOfs];
-			uchar v = V[uvOfs];
+			int yuv[4][3];
+			int uvOfs = ustride*y + x;
+			int u = U[uvOfs];
+			int v = V[uvOfs];
 			yuv2rgb(rgb[0], y(0,0), u, v);
 			yuv2rgb(rgb[1], y(0,1), u, v);
 			yuv2rgb(rgb[2], y(1,0), u, v);
 			yuv2rgb(rgb[3], y(1,1), u, v);
 
 			for (int i = 0; i < 4; ++i)
+			{
 				processRGB(rgb[i]);
+				rgb2yuv(rgb[i], yuv[i]);
+			}
 
-			y(0,0) = y(0,0) / 2;
-			y(1,0) = y(1,0) / 2;
+		
+			y(0,0) = clamp(yuv[0][0]);
+			y(0,1) = clamp(yuv[1][0]);
+			y(1,0) = clamp(yuv[2][0]);
+			y(1,1) = clamp(yuv[3][0]);
+
+			U[uvOfs] = clamp((yuv[0][1] + yuv[1][1] + yuv[2][1] + yuv[3][1]) / 4);
+			V[uvOfs] = clamp((yuv[0][2] + yuv[1][2] + yuv[2][2] + yuv[3][2]) / 4);
 		}
 }
 
