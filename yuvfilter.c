@@ -5,25 +5,25 @@
 
 typedef unsigned char uchar;
 
-void die(const char * const msg)
+enum Mode {
+	mLeft,
+	mRight
+};
+
+static void die(const char * const msg)
 {
 	fprintf(stderr, "FATAL: %s\n", msg);
 	exit(1);
 }
 
-inline void yuv2rgb(int rgb[3], int y, int u, int v)
+static inline void yuv2rgb(int rgb[3], int y, int u, int v)
 {
 	rgb[0] = (9535 * (y - 16) + 13074 * (v - 128)) >> 13;
 	rgb[1] = (9535 * (y - 16) -  6660 * (v - 128) - 3203 * (u - 128)) >> 13;
 	rgb[2] = (9535 * (y - 16) + 16531 * (u - 128)) >> 13;
 }
 
-inline int abs(int x)
-{
-	return (x < 0) ? -x : x;
-}
-
-inline void rgb2yuv(int rgb[3], int yuv[3])
+static inline void rgb2yuv(int rgb[3], int yuv[3])
 {
 	int r = rgb[0]; int g = rgb[1]; int b = rgb[2];
 	yuv[0] = abs(r * 2104 + g * 4130 + b * 802 + 4096 + 131072) >> 13;
@@ -31,18 +31,23 @@ inline void rgb2yuv(int rgb[3], int yuv[3])
 	yuv[2] = abs(r * 3598 + g * -3013 + b * (-585) + 4096 + 1048576) >> 13;
 }
 
-inline uchar clamp(int v)
+static inline uchar clamp(int v)
 {
 	return (v < 0) ? 0 : ((v > 255) ? 255 : (uchar) v);
 }
 
-void processRGB(int rgb[3])
+static inline void processLeftRGB(int rgb[3])
+{
+	rgb[0] = (rgb[1] + rgb[2]) / 2;
+}
+
+static inline void processRightRGB(int rgb[3])
 {
 	rgb[0] = 0;
 }
 
 #define y(p,q) Y[(2*y+p)*width + 2*x+q]
-void mogrifyYUVFrame(unsigned char * frame, int width, int height)
+void mogrifyYUVFrame(unsigned char * frame, int width, int height, enum Mode mode)
 {
 	uchar * Y = frame;
 	uchar * U = Y + width * height;
@@ -62,11 +67,18 @@ void mogrifyYUVFrame(unsigned char * frame, int width, int height)
 			yuv2rgb(rgb[2], y(1,0), u, v);
 			yuv2rgb(rgb[3], y(1,1), u, v);
 
-			for (int i = 0; i < 4; ++i)
-			{
-				processRGB(rgb[i]);
-				rgb2yuv(rgb[i], yuv[i]);
-			}
+			if (mode == mLeft)
+				for (int i = 0; i < 4; ++i)
+				{
+					processLeftRGB(rgb[i]);
+					rgb2yuv(rgb[i], yuv[i]);
+				}
+			else
+				for (int i = 0; i < 4; ++i)
+				{
+					processRightRGB(rgb[i]);
+					rgb2yuv(rgb[i], yuv[i]);
+				}
 
 		
 			y(0,0) = clamp(yuv[0][0]);
@@ -79,8 +91,26 @@ void mogrifyYUVFrame(unsigned char * frame, int width, int height)
 		}
 }
 
+void usage()
+{
+	die(
+		"incorrect usage.\n"
+		"usage: ./yuvfilter left|right"
+	);
+}
+
 int main(int argc, char * argv[])
 {
+	enum Mode mode = mLeft;
+	
+	if (argc != 2) usage();
+	if (!strcmp(argv[1], "left"))
+		mode = mLeft;
+	else if (!strcmp(argv[1], "right"))
+		mode = mRight;
+	else
+		usage();
+	
 	// read YUV format
 	char format[2][1024];
 	for (int i = 0; i < 2; ++i)
@@ -109,7 +139,7 @@ int main(int argc, char * argv[])
 		fread(frame, frameSize, 1, stdin);
 		if (feof(stdin)) break;
 		
-		mogrifyYUVFrame(frame, width, height);
+		mogrifyYUVFrame(frame, width, height, mode);
 		fwrite(frame, frameSize, 1, stdout);
 
 		char separator[1024];
