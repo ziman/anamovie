@@ -84,6 +84,10 @@ int main(int argc, char * argv[])
 		
 		mogrifyYUVFrame(frame, width, height);
 		fwrite(frame, frameSize, 1, stdout);
+
+		char separator[1024];
+		fgets(separator, sizeof(separator), stdin);
+		fprintf(stdout, "%s", separator);
 	}
 	free(frame);
 	

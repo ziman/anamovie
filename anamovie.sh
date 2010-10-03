@@ -10,4 +10,4 @@ w=${dims%:*}
 h=${dims#*:}
 w=$((w/2))
 
-ffmpeg -i "$infile" -f yuv4mpegpipe -vframes 1 -vf crop=0:0:$w:$h -
+ffmpeg -i "$infile" -f yuv4mpegpipe -vf crop=0:0:$w:$h -
